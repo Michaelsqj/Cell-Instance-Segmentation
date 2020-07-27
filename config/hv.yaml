@@ -1,0 +1,12 @@
+SYSTEM:
+  NUM_GPUS: 1
+MODEL:
+  lopt: [['Dice', 'CE'],['MSE'],['Dice','CE']]
+  wopt: [[1,1],[1],[1,1]]
+  copt: [[[ ]]]
+  InputShape: [256, 256]
+  OutputShape: [128, 128]
+DATASET:
+  InputPath: ''
+  Image: '.json'
+  Label: '.json'

@@ -38,6 +38,9 @@ class HVDataset(Dataset):
         self.images = images
         self.labels = labels if mode == 'train' else None
         self.mode = mode
+        self.img_shape = [] * len(self.images)
+        for i in range(len(self.images)):
+            self.img_shape[i] = read_img(os.path.join(self.input_path, self.images[i])).shape
 
     def __getitem__(self, idx: int):
         image = read_img(os.path.join(self.input_path, self.images[idx]))
