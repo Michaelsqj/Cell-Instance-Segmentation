@@ -17,30 +17,35 @@ _C.SYSTEM.NUM_GPUS = 1
 # Model
 # -----------------------------------------------------------------------------
 _C.MODEL = CN()
-_C.MODEL.Trainer = 'hv'
-_C.MODEL.Name = 'hv'
-_C.MODEL.lopt = []
-_C.MODEL.wopt = []
-_C.MODEL.copt = []
-_C.MODEL.InputShape = []
-_C.MODEL.OutputShape = []
+_C.MODEL.TRAINER = 'hv'
+_C.MODEL.NAME = 'hv'
+_C.MODEL.LOPT = []
+_C.MODEL.WOPT = []
+_C.MODEL.COPT = []
+_C.MODEL.INPUT_SHAPE = []
+_C.MODEL.OUTPUT_SHAPE = []
+_C.MODEL.REJECT_SIZE = 10
+_C.MODEL.REJECT_P = 1.0
 # -----------------------------------------------------------------------------
 # Dataset
 # -----------------------------------------------------------------------------
 _C.DATASET = CN()
-_C.DATASET.Name = 'hv'
-_C.DATASET.InputPath = ''
-_C.DATASET.Image = ''
-_C.DATASET.Label = ''
+_C.DATASET.NAME = 'hv'
+_C.DATASET.INPUT_PATH = ''
+_C.DATASET.IMAGE = ''
+_C.DATASET.LABEL = ''
+
 # -----------------------------------------------------------------------------
 # Solver
 # -----------------------------------------------------------------------------
 _C.SOLVER = CN()
-_C.SOLVER.BatchSize = 4
+_C.SOLVER.BATCH_SIZE = 4
 # # -----------------------------------------------------------------------------
 # # Inference
 # # -----------------------------------------------------------------------------
 _C.INFERENCE = CN()
+_C.INFERENCE.IMAGE = ''
+_C.INFERENCE.STRIDE = 64
 
 
 def get_cfg_defaults():

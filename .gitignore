@@ -9,6 +9,7 @@
 .project
 .settings
 .idea
+.temp
  ##filter databfile、sln file##
 *.mdb
 *.ldb

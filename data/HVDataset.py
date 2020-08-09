@@ -2,15 +2,13 @@ import os
 from typing import Any, Dict, Tuple, List
 import torch
 from torch.utils.data import DataLoader, Dataset
-import imgaug as ia
-import imgaug.augmenters as iaa
-from imgaug.augmentables.segmaps import SegmentationMapsOnImage
 import numpy as np
 import math
 import random
 import imgaug
 
 from ..utils.load_save import read_img
+from .utils import *
 
 
 class HVDataset(Dataset):
@@ -20,17 +18,18 @@ class HVDataset(Dataset):
                  mode: str,
                  input_shape,
                  output_shape,
-                 input_path: str
-                 ):
-        '''
-
+                 input_path: str,
+                 reject_size: int,
+                 reject_p: float,
+                 stride: List[int, int]):
+        """
         Parameters
         ----------
         images: list of path of images
         labels: list of path of labels
         mode: 'train' or 'test'
         input_shape:   shape required to input to the net H*W
-        '''
+        """
         self.input_path = input_path
         self.input_shape = input_shape
         self.output_shape = output_shape
@@ -38,73 +37,87 @@ class HVDataset(Dataset):
         self.images = images
         self.labels = labels if mode == 'train' else None
         self.mode = mode
-        self.img_shape = [] * len(self.images)
-        for i in range(len(self.images)):
-            self.img_shape[i] = read_img(os.path.join(self.input_path, self.images[i])).shape
+        self.reject_size = reject_size
+        self.reject_p = reject_p
+        # judge if the current image has been all
+        # predicted in "test" phase
+        # image_idx, pos_idx, pos_max_idx
+        self.index = [0, 0, 0]
+        self.stride = stride
 
     def __getitem__(self, idx: int):
-        image = read_img(os.path.join(self.input_path, self.images[idx]))
         if self.mode == 'train':
-            mask = read_img(os.path.join(self.input_path, self.labels[idx]))
-        image, mask = self.transform(image, mask)
-
-        return image, mask, self.images[idx]
+            self.image = read_img(os.path.join(self.input_path, self.images[idx]))
+            self.mask = read_img(os.path.join(self.input_path, self.labels[idx]))
+            self.image, self.mask = self.pad(self.image, self.mask)
+            image, mask = self.sample()
+            image, mask = aug(image, mask)
+            return image, mask, self.images[idx]
+        else:
+            if self.index[1] == self.index[2]:
+                self.index[0] += 1
+                self.index[1] = self.index[2] = 0
+                self.image = read_img(os.path.join(self.input_path, self.images[self.index[0]]))
+                self.image = self.pad(self.image)
+            elif self.index[1] < self.index[2]:
+                self.index[1] += 1
+            image = self.sample()
+            return image, self.index, self.images[idx]
 
     def __len__(self):
         return len(self.images)
 
-    def transform(self, image, mask):
+    def sample(self):
+        shape = self.mask.shape[:2]
+        assert shape[0] >= self.input_shape[0] and shape[1] >= self.input_shape[1]
+        if self.mode == 'train':
+            while True:
+                # H W C
+                pos = [random.randint(0, shape[i] - self.input_shape[i]) for i in range(2)]
+                mask = self.mask[
+                       pos[0] + self.input_shape[0] // 2 - self.output_shape[0] // 2:
+                       pos[0] + self.input_shape[0] // 2 + self.output_shape[0] // 2,
+                       pos[1] + self.input_shape[1] // 2 - self.output_shape[1] // 2:
+                       pos[1] + self.input_shape[1] // 2 + self.output_shape[1] // 2, :]
+                if (mask[0] > 0).sum() > self.reject_size:
+                    image = self.image[pos[0]:pos[0] + self.input_shape[0], pos[1]:pos[1] + self.input_shape[1], :]
+                    return image, mask
+                elif random.random() > self.reject_p:
+                    image = self.image[pos[0]:pos[0] + self.input_shape[0], pos[1]:pos[1] + self.input_shape[1], :]
+                    return image, mask
+        else:
+            t = [(self.image.shape[i] - self.input_shape[i]) // self.stride[i] for i in range(2)]
+            pos = [0, 0]
+            pos[0] = (self.index[0] // t[0]) * self.stride[0]
+            pos[1] = (self.index[1] % t[1]) * self.stride[1]
+            image = self.image[pos[0]:pos[0] + self.input_shape[0],
+                    pos[1]:pos[1] + self.input_shape[1]]
+            return image
+
+    def pad(self, image, mask=None):
+        # before, after
+        # k*stride + output_shape = pad + image_shape
         pad = [[0, 0], [0, 0]]
         for i in range(2):
-            pad[i][0] = max(0, (self.output_shape[i] - image.shape[i]) // 2)
-            pad[i][1] = max(0, self.output_shape[i] - image.shape[i] - (self.output_shape[i] - image.shape[i]) // 2)
-
+            k = 0
+            while True:
+                if k * self.stride[i] + self.output_shape[i] - image.shape[i] >= 0:
+                    break
+                else:
+                    k += 1
+            tmp = k * self.stride[i] + self.output_shape[i] - image.shape[i]
+            pad[i][0] = tmp // 2
+            pad[i][1] = tmp - tmp // 2
+        # padding around edge
+        dif = [self.input_shape[i] - self.output_shape[i] for i in range(2)]
         for i in image.shape[2]:
             pad_value = int(np.mean(image[:, 0, 0]))
             image[..., i] = np.pad(image[..., i],
-                                   ((pad[0][0], pad[0][1]), (pad[1][0], pad[1][1])),
+                                   ((pad[0][0] + dif[0] // 2, pad[0][1] + dif[0] // 2),
+                                    (pad[1][0] + dif[1] // 2, pad[1][1] + dif[1] // 2)),
                                    constant_values=(pad_value, pad_value),
                                    mode='constant')
 
-        mask = np.pad(mask, ((pad[0][0], pad[0][1]), (pad[1][0], pad[1][1]), (0, 0)), mode='constant')
-        y_min, x_min = random.randint(0, H + 128 - self.input_shape[0]), \
-                       random.randint(0, W + 128 - self.input_shape[1])
-
-        if self.mode == 'train':
-            new_image, new_mask = self.aug(image[y_min:y_min + 256, x_min:x_min + 256, :].copy(),
-                                           mask[y_min:y_min + 256, x_min:x_min + 256, :].copy())
-        else:
-            new_image, new_mask = image[y_min:y_min + 256, x_min:x_min + 256, :], mask[y_min:y_min + 256,
-                                                                                  x_min:x_min + 256, :]
-        new_image, new_mask = torch.tensor(new_image).permute((2, 0, 1)), torch.tensor(new_mask).permute((2, 0, 1))
-
-        return new_image.float() / 255, new_mask
-
-    def aug(self, image, mask):
-        mask = mask.astype(np.uint8)
-        mask = SegmentationMapsOnImage(mask, shape=mask.shape)
-        seq1 = iaa.Sequential(
-            [iaa.Affine(rotate=(-45, 45), shear=5, order=0, scale=(0.8, 1.2), translate_percent=(0.01, 0.01)),
-             iaa.Fliplr(), iaa.Flipud()], random_order=True)
-        seq2 = iaa.SomeOf((2, 4), [iaa.GaussianBlur(), iaa.MedianBlur(),
-                                   iaa.AddToHueAndSaturation(value_hue=[-11, 11], value_saturation=[-10, 10],
-                                                             from_colorspace='BGR'), iaa.GammaContrast()])
-        seq3 = iaa.Sequential([iaa.ElasticTransformation(alpha=50, sigma=8)])
-
-        seq1_det = seq1.to_deterministic()
-        seq2_det = seq2.to_deterministic()
-        seq3_det = seq3.to_deterministic()
-
-        images_aug = seq1_det.augment_image(image=image)
-        segmaps_aug = seq1_det.augment_segmentation_maps([mask])[0]
-
-        images_aug = seq2_det.augment_image(image=images_aug)
-        segmaps_aug = seq2_det.augment_segmentation_maps([segmaps_aug])[0]
-
-        if random.random() > 0.9:
-            images_aug = seq3_det.augment_image(image=images_aug)
-            segmaps_aug = seq3_det.augment_segmentation_maps([segmaps_aug])[0]
-
-        segmaps_aug = segmaps_aug.get_arr_int().astype(np.uint8)
-
-        return images_aug, segmaps_aug
+        if mask is not None:
+            mask = np.pad(mask, ((pad[0][0], pad[0][1]), (pad[1][0], pad[1][1]), (0, 0)), mode='constant')
+            return image, mask
