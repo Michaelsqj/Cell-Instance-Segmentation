@@ -24,3 +24,5 @@
       to do `loss`, `moniter`, `data aug` 
     - 2020/7/27 HVDataset get id for training and testing
     - 2020/8/9 todo: aug, check hvdataset padding and calculation
+    - 2020/9/1 todo: add independent augmentor file
+    - 2020/9/3 finished `data` todo: `trainer`

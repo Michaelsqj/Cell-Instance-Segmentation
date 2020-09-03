@@ -46,6 +46,7 @@ _C.SOLVER.BATCH_SIZE = 4
 _C.INFERENCE = CN()
 _C.INFERENCE.IMAGE = ''
 _C.INFERENCE.STRIDE = 64
+_C.INFERENCE.IMAGE = ''
 
 
 def get_cfg_defaults():
