@@ -26,12 +26,14 @@ _C.MODEL.INPUT_SHAPE = []
 _C.MODEL.OUTPUT_SHAPE = []
 _C.MODEL.REJECT_SIZE = 10
 _C.MODEL.REJECT_P = 1.0
+_C.MODEL.VIS_ITER = 10
 # -----------------------------------------------------------------------------
 # Dataset
 # -----------------------------------------------------------------------------
 _C.DATASET = CN()
 _C.DATASET.NAME = 'hv'
 _C.DATASET.INPUT_PATH = ''
+_C.DATASET.OUTPUT_PATH = ''
 _C.DATASET.IMAGE = ''
 _C.DATASET.LABEL = ''
 
@@ -40,13 +42,21 @@ _C.DATASET.LABEL = ''
 # -----------------------------------------------------------------------------
 _C.SOLVER = CN()
 _C.SOLVER.BATCH_SIZE = 4
+_C.SOLVER.ITERATION_TOTAL = 600
+_C.SOLVER.OPTIMIZER = 'Adam'
+_C.SOLVER.LR_SCHEDULER = 'ReduceOnPlateau'
+_C.SOLVER.GAMMA = 0.5
+_C.SOLVER.BASE_LR = 1e-3
+_C.SOLVER.STEPS = [50, 100]
+_C.SOLVER.ITERATION_SAVE = 100
+_C.SOLVER.ITERATION_RESTART = False
 # # -----------------------------------------------------------------------------
 # # Inference
 # # -----------------------------------------------------------------------------
 _C.INFERENCE = CN()
 _C.INFERENCE.IMAGE = ''
 _C.INFERENCE.STRIDE = 64
-_C.INFERENCE.IMAGE = ''
+_C.INFERENCE.OUTPUT_PATH = ''
 
 
 def get_cfg_defaults():

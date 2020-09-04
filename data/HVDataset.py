@@ -36,9 +36,11 @@ class HVDataset(Dataset):
         if mode == 'test':
             # at test mode, first load all images, and compute the position
             self.pos = []
-        for idx in range(len(self.images)):
-            image = read_img(os.path.join(self.input_path, self.images[idx]))
-            self.pos.extend(self.compute_pos(image.shape, idx))
+            self.shapes = []
+            for idx in range(len(self.images)):
+                image = read_img(os.path.join(self.input_path, self.images[idx]))
+                self.pos.extend(self.compute_pos(image.shape, idx))
+                self.shapes.append(image.shape[:2])
 
     def __getitem__(self, idx: int):
         if self.mode == 'train':

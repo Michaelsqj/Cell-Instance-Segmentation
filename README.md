@@ -26,3 +26,4 @@
     - 2020/8/9 todo: aug, check hvdataset padding and calculation
     - 2020/9/1 todo: add independent augmentor file
     - 2020/9/3 finished `data` todo: `trainer`
+    - 2020/9/4 finish `trainer`

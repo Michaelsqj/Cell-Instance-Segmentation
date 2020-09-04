@@ -2,17 +2,18 @@ import logging, logging.config
 
 
 def build_logger(fname):
+    logger = logging.getLogger("main")
+    logger.setLevel(level=logging.DEBUG)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-    file_handler = logging.FileHandler(fname, mode='a')
-    file_handler.setLevel(level=logging.INFO)
-    file_handler.setFormatter(formatter)
-    stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(logging.DEBUG)
-    stream_handler.setFormatter(formatter)
+    handler = logging.FileHandler(fname)
+    handler.setLevel(logging.DEBUG)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
-    logger = logging.getLogger('main')
-    logger.addHandler(file_handler)
-    logger.addHandler(stream_handler)
+    console = logging.StreamHandler()
+    console.setLevel(logging.DEBUG)
+    console.setFormatter(formatter)
+    logger.addHandler(console)
 
     return logger

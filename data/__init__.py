@@ -6,7 +6,7 @@ from .HVDataset import HVDataset
 dataset_zoo = {'hv': HVDataset}
 
 
-def build_dataloader(cfg, mode) -> DataLoader:
+def build_dataloader(cfg, mode):
     dataset = dataset_zoo[cfg.DATASET.NAME](cfg, mode)
     collate_fn = collate_fn_train if mode == 'train' else collate_fn_test
     shuffle = True if mode == 'train' else False

@@ -10,3 +10,8 @@ DATASET:
   INPUTPATH: ''
   IMAGE: '.json'
   LABEL: '.json'
+INFERENCE:
+  IMAGE: '.json'
+
+SOLVER:
+  LR
