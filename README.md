@@ -2,6 +2,7 @@
 
 ## project plan
 **Basic requirements:** <model, trainer, post> can be replaced
+**Remember local, github, server should always keep consistent
 1. Structure:
     - scripts
         - main.py
