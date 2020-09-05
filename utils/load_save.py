@@ -2,6 +2,7 @@ import numpy as np
 import imageio
 import os
 import torch
+from scipy.io import savemat
 
 
 def read_img(path):
@@ -16,3 +17,5 @@ def read_img(path):
 def save_img(path, image, mode='npy'):
     if mode == 'npy':
         np.save(path, image)
+    if mode == 'mat':
+        pass

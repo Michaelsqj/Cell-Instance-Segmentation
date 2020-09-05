@@ -9,6 +9,7 @@ import imgaug
 import json
 from ..utils.load_save import read_img
 from .utils import *
+from .augmentor import aug
 
 
 class HVDataset(Dataset):

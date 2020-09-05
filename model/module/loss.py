@@ -4,24 +4,29 @@ import torch.nn as nn
 from torch.nn import functional as F
 import numpy as np
 
+"""
+WeightedBCE : inputs after sigmoid, target have same size as inputs, each channel {0,1}
+                can have weight on every channel
+CrossEntropy : raw inputs do not convert to 0~1, contains softmax, target do not have the 'C' channel
+                CrossEntropy can have channel weight, same size as channel numbers
+DiceLoss :  inputs after sigmoid, target have same size as inputs
+                can have channel weight
+MSELoss : inputs can use sigmoid or not, based on the performance. targets same size as inputs
+                no weight
+Generalized DiceLoss : #todo
+"""
+class WeightedBCE(nn.Module):
+    """Weighted binary cross-entropy.
+    """
 
-def weight_binary_ratio(label, alpha=1.0):
-    """Binary-class rebalancing."""
-    # input: numpy tensor
-    # weight for smaller class is 1, the bigger one is at most 100*alpha
-    if label.max() == label.min():  # uniform weights for volume with a single label
-        weight_factor = 1.0
-        weight = np.ones_like(label, np.float32)
-    else:
-        weight_factor = float(label.sum()) / np.prod(label.shape)
+    def __init__(self, size_average=True, reduce=True):
+        super().__init__()
+        self.size_average = size_average
+        self.reduce = reduce
 
-        weight_factor = np.clip(weight_factor, a_min=5e-2, a_max=0.99)
-
-        if weight_factor > 0.5:
-            weight = label + alpha * weight_factor / (1 - weight_factor) * (1 - label)
-        else:
-            weight = alpha * (1 - weight_factor) / weight_factor * label + (1 - label)
-    return weight
+    def forward(self, pred, target, weight=None):
+        # _assert_no_grad(target)
+        return F.binary_cross_entropy(pred, target, weight)
 
 
 class FocalLoss(nn.Module):
@@ -57,37 +62,28 @@ class DiceLoss(nn.Module):
     def __init__(self):
         super(DiceLoss, self).__init__()
 
-    def forward(self, input: torch.Tensor, target: torch.Tensor, smooth: float = 1e-3) -> torch.Tensor:
-        assert input.dim() == 3
-        assert target.dim() == 3
-        N = target.size(0)
-
-        input_flat = input.view(N, -1)
-        target_flat = target.view(N, -1)
-
-        intersection = input_flat * target_flat
-
-        loss = 1 - (2 * intersection.sum() + smooth) / (
-                (input_flat * input_flat).sum() + (target_flat * target_flat).sum() + smooth)
-
+    def forward(self, inputs: torch.Tensor, targets: torch.Tensor, smooth: float = 1, weight=None) -> torch.Tensor:
+        """
+        :param inputs:  NxCX...
+        :param targets: NXCX... same size as inputs
+        :param weight: CX1 tensor
+        """
+        assert inputs.shape == targets.shape
+        N = targets.size(0)
+        if weight is not None:
+            assert weight.shape[0] == inputs.shape[1]
+            loss = 0
+            for i in range(inputs.shape[1]):
+                input_flat = inputs[:, i].view(N, -1)
+                target_flat = targets[:, i].view(N, -1)
+                intersection = input_flat * target_flat
+                loss += weight[i] * (2 * intersection.sum() + smooth) / (
+                        (input_flat * input_flat).sum() + (target_flat * target_flat).sum() + smooth)
+            loss = 1 - loss / torch.sum(weight)
+        else:
+            input_flat = inputs.view(N, -1)
+            target_flat = targets.view(N, -1)
+            intersection = input_flat * target_flat
+            loss = 1 - (2 * intersection.sum() + smooth) / (
+                    (input_flat * input_flat).sum() + (target_flat * target_flat).sum() + smooth)
         return loss
-
-
-class DiceCoeff(nn.Module):
-    def __init__(self):
-        super(DiceCoeff, self).__init__()
-        self.dice = DiceLoss()
-
-    def forward(self,
-                inputs: torch.Tensor,
-                targets: torch.Tensor,
-                smooth: float = 1e-3) -> torch.Tensor:
-        assert targets.dim() == 3
-        tmp = torch.zeros(size=inputs.shape).cuda()
-        targets = tmp.scatter_(dim=1, index=targets.unsqueeze(dim=1).long(), value=1).cuda()
-        assert inputs.shape[1] in (2, 5)
-        assert targets.shape == inputs.shape
-        totalloss = 0
-        for c in range(inputs.shape[1]):
-            totalloss += self.dice(inputs[:, c, :, :].squeeze(), targets[:, c, :, :].squeeze())
-        return totalloss.cuda() / (inputs.shape[1])

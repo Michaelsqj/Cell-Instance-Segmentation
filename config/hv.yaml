@@ -14,4 +14,4 @@ INFERENCE:
   IMAGE: '.json'
 
 SOLVER:
-  LR
+  LR_SCHEDULER: 'ReduceOnPlateau'
