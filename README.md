@@ -29,3 +29,4 @@
     - 2020/9/3 finished `data` todo: `trainer`
     - 2020/9/4 finish `trainer`
     - 2020/9/5 test and run
+    - 2020/9/8 finish `loss`

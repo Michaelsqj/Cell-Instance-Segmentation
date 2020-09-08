@@ -15,6 +15,8 @@ MSELoss : inputs can use sigmoid or not, based on the performance. targets same 
                 no weight
 Generalized DiceLoss : #todo
 """
+
+
 class WeightedBCE(nn.Module):
     """Weighted binary cross-entropy.
     """
@@ -62,7 +64,7 @@ class DiceLoss(nn.Module):
     def __init__(self):
         super(DiceLoss, self).__init__()
 
-    def forward(self, inputs: torch.Tensor, targets: torch.Tensor, smooth: float = 1, weight=None) -> torch.Tensor:
+    def forward(self, inputs: torch.Tensor, targets: torch.Tensor, smooth: float = 1):
         """
         :param inputs:  NxCX...
         :param targets: NXCX... same size as inputs
@@ -70,20 +72,32 @@ class DiceLoss(nn.Module):
         """
         assert inputs.shape == targets.shape
         N = targets.size(0)
-        if weight is not None:
-            assert weight.shape[0] == inputs.shape[1]
-            loss = 0
-            for i in range(inputs.shape[1]):
-                input_flat = inputs[:, i].view(N, -1)
-                target_flat = targets[:, i].view(N, -1)
-                intersection = input_flat * target_flat
-                loss += weight[i] * (2 * intersection.sum() + smooth) / (
-                        (input_flat * input_flat).sum() + (target_flat * target_flat).sum() + smooth)
-            loss = 1 - loss / torch.sum(weight)
-        else:
-            input_flat = inputs.view(N, -1)
-            target_flat = targets.view(N, -1)
-            intersection = input_flat * target_flat
-            loss = 1 - (2 * intersection.sum() + smooth) / (
-                    (input_flat * input_flat).sum() + (target_flat * target_flat).sum() + smooth)
+        input_flat = inputs.view(N, -1)
+        target_flat = targets.view(N, -1)
+        intersection = input_flat * target_flat
+        loss = 1 - (2 * intersection.sum() + smooth) / (
+                (input_flat * input_flat).sum() + (target_flat * target_flat).sum() + smooth)
         return loss
+
+
+class GDLLoss(nn.Module):
+    def __init__(self):
+        super(GDLLoss, self).__init__()
+
+    def forward(self, inputs, targets, weights=None, smooth=1.0):
+        """
+        :param inputs: NxCxHxW
+        :param targets: NxCxHxW same shape as input
+        :param weights: NxC
+        :return:
+        """
+        up = 0
+        down = 0
+        N = inputs.shape[0]
+        C = inputs.shape[1]
+        for c in range(inputs.shape[1]):
+            input = inputs[:, c].view(N, -1)
+            target = targets[:, c].view(N, -1)
+            up += weights[:, c] * torch.sum(input * target, dim=1) + smooth
+            down += weights[:, c] * torch.sum(input + target, dim=1) + smooth
+        return 1 - torch.mean(2 * up / down)
