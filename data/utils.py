@@ -211,17 +211,15 @@ def weight_binary_ratio(label, alpha=1.0):
     return weight
 
 
-def weight_gdl(label, smooth=1):
+def weight_gdl(label):
     """
     weight for generalized dice loss https://arxiv.org/pdf/1707.03237.pdf
-    label should be C X ...
+    label should be C x ...
     """
     weight = np.zeros((label.shape[0], 1))
-    for i in range(label):
+    for i in range(label.shape[0]):
         w = np.sum(label[i])
+        w = np.clip(w, a_min=1, a_max=10)
         w = w * w
-        if w == 0:
-            weight[i, 0] = 1
-        else:
-            weight[i, 0] = 1 / w
+        weight[i] = w
     return weight

@@ -9,7 +9,7 @@ import imgaug
 import json
 from ..utils.load_save import read_img
 from .utils import *
-from .augmentor import aug
+from .augmentor import augmentor
 
 
 class HVDataset(Dataset):
@@ -33,6 +33,7 @@ class HVDataset(Dataset):
         self.reject_size = cfg.MODEL.REJECT_SIZE
         self.reject_p = cfg.MODEL.REJECT_P
         self.stride = cfg.INFERENCE.STRIDE
+        self.augmentor = augmentor(cfg)
         assert os.path.isdir(self.input_path)
         if mode == 'test':
             # at test mode, first load all images, and compute the position
@@ -53,7 +54,7 @@ class HVDataset(Dataset):
             image, mask = self.pad(image, mask)
             pos = self.compute_pos(image.shape)
             image, mask = self.sample(pos, image, mask)
-            image, mask = aug(image, mask)
+            image, mask = self.augmentor({'image': image, 'label': mask})
             return image, mask
         if self.mode == 'test':
             """
