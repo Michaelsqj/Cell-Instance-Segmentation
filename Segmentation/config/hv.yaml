@@ -1,0 +1,25 @@
+SYSTEM:
+  NUM_GPUS: 1
+MODEL:
+  LOPT: [['DiceLoss', 'WeightedBCE'],['MSE','GradMSE'],['DiceLoss','WeightedBCE']]
+  WOPT: [['0','1'],['0','3'],['0','1']]
+  LOSS_WEIGHT: [[1.0,1.0],[1.0,1.0],[1.0,1.0]]
+  INPUTSHAPE: [256, 256]
+  OUTPUTSHAPE: [128, 128]
+DATASET:
+  INPUT_PATH: ''
+  OUTPUT_PATH: ''
+  IMAGE: '.json'
+  LABEL: '.json'
+SOLVER:
+  LR_SCHEDULER: 'ReduceOnPlateau'
+  BASE_LR: 1e-3
+  GAMMA: 0.1
+  OPTIMIZER: 'Adam'
+  BATCH_SIZE: 4
+  ITERATION_TOTAL: 600
+  ITERATION_SAVE: 50
+INFERENCE:
+  IMAGE: '.json'
+  STRIDE: 64
+  OUTPUT_PATH: ''

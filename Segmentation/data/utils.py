@@ -1,91 +1,12 @@
-from typing import Tuple
-import torch
-from torch.nn import functional as F
 import numpy as np
 import cv2
+from scipy.ndimage.filters import convolve
 
 
-def get_gradient_hv(logits: torch.Tensor,
-                    h_ch: int = 0,
-                    v_ch: int = 1) -> Tuple[torch.Tensor, torch.Tensor]:
-    """Get horizontal & vertical gradients
-
-    Parameters
-    ----------
-    logits : torch.Tensor
-        Raw logits from HV branch
-    h_ch : int
-        Number of horizontal channels
-    v_ch : int
-        Number of vertical channels
-
-    Returns
-    -------
-    gradients : Tuple[torch.Tensor, torch.Tensor]
-        Horizontal and vertical gradients
-    """
-    mh = torch.tensor([[-1, 0, 1],
-                       [-2, 0, 2],
-                       [-1, 0, 1]], dtype=torch.float).unsqueeze(dim=0).unsqueeze(dim=1).cuda()
-    mv = torch.tensor([[1, 2, 1],
-                       [0, 0, 0],
-                       [-1, -2, -1]], dtype=torch.float).unsqueeze(dim=0).unsqueeze(dim=1).cuda()
-
-    hl = logits[:, h_ch, :, :].unsqueeze(dim=1).float()
-    vl = logits[:, v_ch, :, :].unsqueeze(dim=1).float()
-
-    assert (mh.dim() == 4 and mv.dim() == 4 and hl.dim() == 4 and vl.dim() == 4)
-
-    dh = F.conv2d(hl, mh, stride=1, padding=1)
-    dv = F.conv2d(vl, mv, stride=1, padding=1)
-
-    return dh, dv
-
-
-def get_np_targets(targets: torch.Tensor) -> torch.Tensor:
-    '''
-
-    Parameters
-    ----------
-    targets N*H*W with the value of {0,...,n} n is the number of cells
-
-    Returns N*H*W with 0:background 1:cells
-    -------
-
-    '''
-    assert targets.dim() == 3
-    # targets = targets.double()
-    # np_targets = targets.where(targets == 0, torch.tensor(1).double())
-    np_targets = np.zeros(targets.shape)
-    N = targets.shape[0]
-    for j in range(N):
-        inst_map = (targets[j, ...]).numpy()
-        inst_id = list(np.unique(inst_map))
-        inst_id_list = []
-        for i in inst_id:
-            if i % 1.0 == 0 and i > 0:
-                inst_id_list.append(i)
-        id_list = []
-        for inst_id in inst_id_list[0:]:  # avoid 0 i.e background
-            mask = np.array(inst_map == inst_id, np.int16)
-            mask = np.squeeze(mask)
-            tmp = mask.copy()
-            _, tmp = cv2.connectedComponents(tmp.astype(np.uint8))
-            max_s = 0
-            for k in np.unique(tmp):
-                if k > 0:
-                    temp = np.where(tmp == k, 1, 0)
-                    if np.sum(temp) > max_s:
-                        max_s = np.sum(temp)
-                        mask = temp * inst_id
-            if max_s < 20:
-                continue
-            np_targets[j, ...] += np.where(mask > 0, 1, 0)
-    np_targets = torch.tensor(np_targets)
-    return np_targets
-
-
-def get_hv_targets(target: np.array) -> np.ndarray:
+#################
+# get target ####
+#################
+def get_hv_target(target: np.array) -> np.ndarray:
     """
     Parameters
     ----------
@@ -94,7 +15,7 @@ def get_hv_targets(target: np.array) -> np.ndarray:
     -------
     """
     assert np.ndim(target) == 2
-    hv_targets = np.zeros(shape=(2, target.shape[0], target.shape[1]), dtype=float)
+    hv_target = np.zeros(shape=(2, target.shape[0], target.shape[1]), dtype=float)
     inst_centroid_list, inst_id_list = get_inst_centroid(target)  # [(x1,y1),(x2,y2),(x3,y3)....(xn,yn)]
     for _ in range(len(inst_id_list)):  # id: instance index from 1~n
         xc, yc = inst_centroid_list[_]
@@ -146,21 +67,16 @@ def get_hv_targets(target: np.array) -> np.ndarray:
             tmp_v = tmp_v.astype(float)
 
         Temp = np.where(target == id, tmp_h, 0).squeeze()
-        tmp = np.where(hv_targets[0, :, :] != 0, 1, 0) * np.where(Temp != 0, 1, 0)
+        tmp = np.where(hv_target[0, :, :] != 0, 1, 0) * np.where(Temp != 0, 1, 0)
         tmp = 1 - tmp
-        hv_targets[0, :, :] = hv_targets[0, :, :] * tmp + Temp
+        hv_target[0, :, :] = hv_target[0, :, :] * tmp + Temp
 
         Temp = np.where(target == id, tmp_v, 0).squeeze()
-        tmp = np.where(hv_targets[1, :, :] != 0, 1, 0) * np.where(Temp != 0, 1, 0)
+        tmp = np.where(hv_target[1, :, :] != 0, 1, 0) * np.where(Temp != 0, 1, 0)
         tmp = 1 - tmp
-        hv_targets[1, :, :] = hv_targets[1, :, :] * tmp + Temp
+        hv_target[1, :, :] = hv_target[1, :, :] * tmp + Temp
 
-    # assert hv_targets.dim() == 4 and hv_targets.shape[1] == 2
-    return hv_targets
-
-
-def get_nc_targets(targets: torch.Tensor) -> torch.Tensor:
-    return torch.tensor()
+    return hv_target
 
 
 def get_inst_centroid(inst_map):
@@ -184,6 +100,17 @@ def get_inst_centroid(inst_map):
     return inst_centroid_list, id_list
 
 
+def one_hot(label):
+    C = np.max(label)
+    target = np.zeros((C + 1, label.shape[0], label.shape[1]), dtype=label.dtype)
+    for i in range(C):
+        target[C] = (label == C).astype(target.dtype)
+    return target
+
+
+#################
+# get weight ####
+#################
 def weight_binary_ratio(label, alpha=1.0):
     """Binary-class rebalancing."""
     # input: numpy tensor
@@ -213,5 +140,5 @@ def weight_gdl(label):
         w = np.sum(label[i])
         w = np.clip(w, a_min=1, a_max=10)
         w = w * w
-        weight[i] = w
+        weight[i] = 1 / w
     return weight

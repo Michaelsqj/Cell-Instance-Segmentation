@@ -101,3 +101,44 @@ class GDLLoss(nn.Module):
             up += weights[:, c] * torch.sum(input * target, dim=1) + smooth
             down += weights[:, c] * torch.sum(input + target, dim=1) + smooth
         return 1 - torch.mean(2 * up / down)
+
+
+class GradMSE(nn.Module):
+    def __init__(self):
+        super(GradMSE, self).__init__()
+
+    def forward(self,
+                inputs: torch.Tensor,
+                targets: torch.Tensor,
+                weights):
+        """
+        :param inputs: Nx2xHxW
+        :param targets: Nx2xHxW
+        :param weights: Nx1xHxW
+        :return:
+        """
+        h_grads, v_grads = self.get_gradient_hv(inputs)
+        h_tar, v_tar = self.get_gradient_hv(targets)
+
+        loss = F.mse_loss(weights * (h_grads - h_tar)) + F.mse_loss(weights * (v_grads - v_tar))
+        return loss
+
+    def get_gradient_hv(self, logits: torch.Tensor,
+                        h_ch: int = 0,
+                        v_ch: int = 1):
+        mh = torch.tensor([[-1, 0, 1],
+                           [-2, 0, 2],
+                           [-1, 0, 1]], dtype=torch.float).unsqueeze(dim=0).unsqueeze(dim=1).cuda()
+        mv = torch.tensor([[1, 2, 1],
+                           [0, 0, 0],
+                           [-1, -2, -1]], dtype=torch.float).unsqueeze(dim=0).unsqueeze(dim=1).cuda()
+
+        hl = logits[:, h_ch, :, :].unsqueeze(dim=1).float()
+        vl = logits[:, v_ch, :, :].unsqueeze(dim=1).float()
+
+        assert (mh.dim() == 4 and mv.dim() == 4 and hl.dim() == 4 and vl.dim() == 4)
+
+        dh = F.conv2d(hl, mh, stride=1, padding=1)
+        dv = F.conv2d(vl, mv, stride=1, padding=1)
+
+        return dh, dv

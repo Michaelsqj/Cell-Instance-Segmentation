@@ -205,3 +205,21 @@ class _Decoder(nn.Module):
 
         # x N*64*256*256
         return x, x1, x2
+
+
+class _SegmentationHead(nn.Module):
+    def __init__(self, head):
+        super(_SegmentationHead, self).__init__()
+        assert head in ['np', 'hv', 'nc']  # "Head must be 'np' or 'hv' or 'nc"
+        self.head = head
+
+        self.bn_relu = _BNRelu(num_features=64)
+        if self.head in ['np', 'hv']:
+            self.conv = nn.Conv2d(64, 2, kernel_size=1, padding=0, stride=1, dilation=1, bias=True)
+        else:
+            self.conv = nn.Conv2d(64, 5, kernel_size=1, padding=0, stride=1, dilation=1, bias=True)
+
+    def forward(self, inputs):
+        out = self.bn_relu(inputs)
+        out = self.conv(out)
+        return out

@@ -30,3 +30,4 @@
     - 2020/9/4 finish `trainer`
     - 2020/9/5 test and run
     - 2020/9/8 finish `loss`
+    - 2020/9/12 need to check `visualization`

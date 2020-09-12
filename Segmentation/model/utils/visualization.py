@@ -23,6 +23,7 @@ class visualizer():
             self.writer.add_scalar('loss_%d' % i, loss, global_step=self.iter)
 
     def image(self, images, outputs, masks):
+        # images: Nx3xHxW, outputs: [NxCxHxW,...], masks: [NxCxHxW,...]
         image = make_grid(images.squeeze(), padding=0, nrow=images.shape[0])
         self.writer.add_image('image', image, global_step=self.iter)
         for i in range(outputs.shape[1]):

@@ -2,7 +2,7 @@ from typing import List, Dict, Tuple
 import torch
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
-from .HVDataset import HVDataset
+from HVDataset import HVDataset
 
 dataset_zoo = {'hv': HVDataset}
 
@@ -19,10 +19,21 @@ def collate_fn_train(batch):
     images, targets, weights = zip(*batch)
     images = np.stack(images, axis=0)
     # multiple targets for each input
-    targets = [np.stack(targets[:][i], axis=0) for i in range(len(targets[0]))]
-    weights = [[np.stack(targets[:][i][j], axis=0) for j in range(len(targets[0][i]))] for i in
-               range(len(targets[0]))]
-    return images, targets, weights
+    target = [None] * len(targets[0])
+    for i in range(len(targets[0])):
+        temp = []
+        for n in range(len(targets)):
+            temp.append(targets[n][i])
+        target[i] = np.stack(temp, axis=0)
+    weight = [None] * len(weights)
+    for i in range(len(weights[0])):
+        weight[i] = [None] * len(weights[0])
+        for j in range(len(weights[0][i])):
+            temp = []
+            for n in range(len(weights)):
+                temp.append(weights[n][i][j])
+            weight[i][j] = np.stack(temp, axis=0)
+    return images, target, weight
 
 
 def collate_fn_test(batch):

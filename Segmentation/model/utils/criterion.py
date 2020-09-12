@@ -1,14 +1,15 @@
 import torch
 import torch.nn as nn
-from model.module.loss import FocalLoss, CE, DiceLoss, WeightedBCE
+from Segmentation.model.module.loss import DiceLoss, WeightedBCE, GradMSE, GDLLoss
 
 
 class Criterion(nn.Module):
     """
     compute loss given by loss option and loss weight
+    most important : each input should correspond to each target
     """
 
-    def __init__(self, lopt, wopt, loss_weigth, device, copt=None):
+    def __init__(self, lopt, wopt, loss_weigth, device):
         """
         :param lopt: 'str' choose the loss function to use
         :param wopt: list of float choose loss weight
@@ -18,7 +19,6 @@ class Criterion(nn.Module):
         self.loss = self.get_loss(lopt)
         self.total_loss = 0
         self.losses = []  # the number of each loss, for monitor purpose
-        self.copt = copt
         self.loss_weight = loss_weigth
         self.wopt = wopt
         self.device = device
@@ -36,6 +36,10 @@ class Criterion(nn.Module):
                     loss[i][j] = nn.MSELoss()
                 elif lopt[i][j] == 'WeightedBCE':
                     loss[i][j] = WeightedBCE()
+                elif lopt[i][j] == 'GradMSE':
+                    loss[i][j] = GradMSE()
+                elif lopt[i][j] == 'GDL':
+                    loss[i][j] = GDLLoss()
                 else:
                     raise ValueError('loss option not exist')
         return loss
@@ -48,7 +52,7 @@ class Criterion(nn.Module):
         """
         for i in range(len(self.loss)):
             for j in range(len(self.loss[i])):
-                if self.wopt[i][j] == '0':
+                if self.wopt[i][j] == '0':  # no loss weight
                     loss = self.loss_weight[i][j] * self.loss[i][j](inputs,
                                                                     torch.from_numpy(targets[i]).to(self.device))
                 else:

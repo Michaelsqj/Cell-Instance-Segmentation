@@ -7,9 +7,9 @@ import math
 import random
 import imgaug
 import json
-from ..utils.load_save import read_img
-from .utils import *
-from .augmentor import augmentor
+from Segmentation.utils import read_img
+from utils import *
+from augmentor import augmentor
 
 
 class HVDataset(Dataset):

@@ -1,10 +1,8 @@
-import os
-from ..config import get_cfg_defaults
+from Segmentation.config import get_cfg_defaults
 import argparse
 import torch
-from ..engine import trainer_zoo
-from ..logs import build_logger
-import logging
+from Segmentation.engine import trainer_zoo
+from Segmentation.logs import build_logger
 
 
 def get_args():

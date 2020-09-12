@@ -1,12 +1,10 @@
-import torch
 import json
-import os
 from tqdm import tqdm
 import numpy as np
-from ..model import build_model, visualizer, Criterion, save_checkpoint, update_checkpoint
-from ..data import build_dataloader
-from ..utils import save_img
-from .solver import build_solver
+from Segmentation.model import build_model, visualizer, Criterion, save_checkpoint, update_checkpoint
+from Segmentation.data import build_dataloader
+from Segmentation.utils import save_img
+from Segmentation.engine.solver import build_solver
 import logging
 
 logger = logging.getLogger('main.trainer')
