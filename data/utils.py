@@ -85,84 +85,76 @@ def get_np_targets(targets: torch.Tensor) -> torch.Tensor:
     return np_targets
 
 
-def get_hv_targets(targets: torch.Tensor) -> torch.Tensor:
-    '''
-
+def get_hv_targets(target: np.array) -> np.ndarray:
+    """
     Parameters
     ----------
-    targets N*H*W with the value of {0,...,n} n is the number of cells
-
-    Returns N*2*H*W
+    targets H*W with the value of {0,...,n} n is the number of cells
+    Returns 2*H*W
     -------
+    """
+    assert np.ndim(target) == 2
+    hv_targets = np.zeros(shape=(2, target.shape[0], target.shape[1]), dtype=float)
+    inst_centroid_list, inst_id_list = get_inst_centroid(target)  # [(x1,y1),(x2,y2),(x3,y3)....(xn,yn)]
+    for _ in range(len(inst_id_list)):  # id: instance index from 1~n
+        xc, yc = inst_centroid_list[_]
+        id = inst_id_list[_]
+        H, V = np.meshgrid(np.arange(target.shape[1]), np.arange(target.shape[0]))
+        xc, yc = int(xc), int(yc)
+        tmp_h = H - xc
+        tmp_v = V - yc
+        tmp_h = np.where(target == id, tmp_h, 0)
+        tmp_v = np.where(target == id, tmp_v, 0)
+        #### rescale to -1~1
+        #### horizontal
+        maximum = np.max(tmp_h)
+        minimum = np.min(tmp_h)
+        if maximum > 0 and minimum < 0:
+            tmp_h_pos = np.where(tmp_h > 0, tmp_h, 0).astype(float)
+            tmp_h_neg = np.where(tmp_h < 0, tmp_h, 0).astype(float)
+            tmp_h_pos = tmp_h_pos / maximum
+            tmp_h_neg = tmp_h_neg / abs(minimum)
+            tmp_h = tmp_h_neg + tmp_h_pos
+        elif maximum > 0 and minimum == 0:
+            tmp_h_pos = np.where(tmp_h > 0, tmp_h, 0).astype(float)
+            tmp_h_pos = tmp_h_pos / maximum
+            tmp_h = tmp_h_pos.astype(float)
+        elif maximum == 0 and minimum < 0:
+            tmp_h_neg = np.where(tmp_h < 0, tmp_h, 0).astype(float)
+            tmp_h_neg = tmp_h_neg / abs(minimum)
+            tmp_h = tmp_h_neg.astype(float)
+        else:
+            tmp_h = tmp_h.astype(float)
+        #### vertical
+        maximum = np.max(tmp_v)
+        minimum = np.min(tmp_v)
+        if maximum > 0 and minimum < 0:
+            tmp_v_pos = np.where(tmp_v > 0, tmp_v, 0).astype(float)
+            tmp_v_neg = np.where(tmp_v < 0, tmp_v, 0).astype(float)
+            tmp_v_pos = tmp_v_pos / maximum
+            tmp_v_neg = tmp_v_neg / abs(minimum)
+            tmp_v = tmp_v_neg + tmp_v_pos
+        elif maximum > 0 and minimum == 0:
+            tmp_v_pos = np.where(tmp_v > 0, tmp_v, 0).astype(float)
+            tmp_v_pos = tmp_v_pos / maximum
+            tmp_v = tmp_v_pos
+        elif maximum == 0 and minimum < 0:
+            tmp_v_neg = np.where(tmp_v < 0, tmp_v, 0).astype(float)
+            tmp_v_neg = tmp_v_neg / abs(minimum)
+            tmp_v = tmp_v_neg
+        else:
+            tmp_v = tmp_v.astype(float)
 
-    '''
-    assert targets.dim() == 3
-    targets = targets.numpy()
-    N = targets.shape[0]
-    hv_targets = np.zeros(shape=(N, 2, targets.shape[1], targets.shape[2]), dtype=float)
-    for n in range(N):
-        target = np.squeeze(targets[n, :, :])
-        inst_centroid_list, inst_id_list = get_inst_centroid(target)  # [(x1,y1),(x2,y2),(x3,y3)....(xn,yn)]
-        for _ in range(len(inst_id_list)):  # id: instance index from 1~n
-            xc, yc = inst_centroid_list[_]
-            id = inst_id_list[_]
-            H, V = np.meshgrid(np.arange(target.shape[1]), np.arange(target.shape[0]))
-            xc, yc = int(xc), int(yc)
-            tmp_h = H - xc
-            tmp_v = V - yc
-            tmp_h = np.where(target == id, tmp_h, 0)
-            tmp_v = np.where(target == id, tmp_v, 0)
-            #### rescale to -1~1
-            #### horizontal
-            maximum = np.max(tmp_h)
-            minimum = np.min(tmp_h)
-            if maximum > 0 and minimum < 0:
-                tmp_h_pos = np.where(tmp_h > 0, tmp_h, 0).astype(float)
-                tmp_h_neg = np.where(tmp_h < 0, tmp_h, 0).astype(float)
-                tmp_h_pos = tmp_h_pos / maximum
-                tmp_h_neg = tmp_h_neg / abs(minimum)
-                tmp_h = tmp_h_neg + tmp_h_pos
-            elif maximum > 0 and minimum == 0:
-                tmp_h_pos = np.where(tmp_h > 0, tmp_h, 0).astype(float)
-                tmp_h_pos = tmp_h_pos / maximum
-                tmp_h = tmp_h_pos.astype(float)
-            elif maximum == 0 and minimum < 0:
-                tmp_h_neg = np.where(tmp_h < 0, tmp_h, 0).astype(float)
-                tmp_h_neg = tmp_h_neg / abs(minimum)
-                tmp_h = tmp_h_neg.astype(float)
-            else:
-                tmp_h = tmp_h.astype(float)
-            #### vertical
-            maximum = np.max(tmp_v)
-            minimum = np.min(tmp_v)
-            if maximum > 0 and minimum < 0:
-                tmp_v_pos = np.where(tmp_v > 0, tmp_v, 0).astype(float)
-                tmp_v_neg = np.where(tmp_v < 0, tmp_v, 0).astype(float)
-                tmp_v_pos = tmp_v_pos / maximum
-                tmp_v_neg = tmp_v_neg / abs(minimum)
-                tmp_v = tmp_v_neg + tmp_v_pos
-            elif maximum > 0 and minimum == 0:
-                tmp_v_pos = np.where(tmp_v > 0, tmp_v, 0).astype(float)
-                tmp_v_pos = tmp_v_pos / maximum
-                tmp_v = tmp_v_pos
-            elif maximum == 0 and minimum < 0:
-                tmp_v_neg = np.where(tmp_v < 0, tmp_v, 0).astype(float)
-                tmp_v_neg = tmp_v_neg / abs(minimum)
-                tmp_v = tmp_v_neg
-            else:
-                tmp_v = tmp_v.astype(float)
+        Temp = np.where(target == id, tmp_h, 0).squeeze()
+        tmp = np.where(hv_targets[0, :, :] != 0, 1, 0) * np.where(Temp != 0, 1, 0)
+        tmp = 1 - tmp
+        hv_targets[0, :, :] = hv_targets[0, :, :] * tmp + Temp
 
-            Temp = np.where(target == id, tmp_h, 0).squeeze()
-            tmp = np.where(hv_targets[n, 0, :, :] != 0, 1, 0) * np.where(Temp != 0, 1, 0)
-            tmp = 1 - tmp
-            hv_targets[n, 0, :, :] = hv_targets[n, 0, :, :] * tmp + Temp
+        Temp = np.where(target == id, tmp_v, 0).squeeze()
+        tmp = np.where(hv_targets[1, :, :] != 0, 1, 0) * np.where(Temp != 0, 1, 0)
+        tmp = 1 - tmp
+        hv_targets[1, :, :] = hv_targets[1, :, :] * tmp + Temp
 
-            Temp = np.where(target == id, tmp_v, 0).squeeze()
-            tmp = np.where(hv_targets[n, 1, :, :] != 0, 1, 0) * np.where(Temp != 0, 1, 0)
-            tmp = 1 - tmp
-            hv_targets[n, 1, :, :] = hv_targets[n, 1, :, :] * tmp + Temp
-
-    hv_targets = torch.tensor(hv_targets)
     # assert hv_targets.dim() == 4 and hv_targets.shape[1] == 2
     return hv_targets
 

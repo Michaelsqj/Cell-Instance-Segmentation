@@ -8,7 +8,7 @@ class Criterion(nn.Module):
     compute loss given by loss option and loss weight
     """
 
-    def __init__(self, lopt, wopt, copt):
+    def __init__(self, lopt, wopt, loss_weigth, device, copt=None):
         """
         :param lopt: 'str' choose the loss function to use
         :param wopt: list of float choose loss weight
@@ -18,8 +18,10 @@ class Criterion(nn.Module):
         self.loss = self.get_loss(lopt)
         self.total_loss = 0
         self.losses = []  # the number of each loss, for monitor purpose
-        self.weight = wopt
         self.copt = copt
+        self.loss_weight = loss_weigth
+        self.wopt = wopt
+        self.device = device
 
     def get_loss(self, lopt):
         loss = [None] * len(lopt)
@@ -38,18 +40,21 @@ class Criterion(nn.Module):
                     raise ValueError('loss option not exist')
         return loss
 
-    def forward(self, inputs, targets):
+    def forward(self, inputs, targets, weights):
         """
         :param inputs:  list of model output
         :param targets:  list of target, same number as inputs
         :return:
         """
-        for i in range(len(inputs)):
+        for i in range(len(self.loss)):
             for j in range(len(self.loss[i])):
-                if len(self.copt[i][j]) == 0:
-                    temp = self.weight[i] * self.loss[i][j](inputs[i], targets[i])
+                if self.wopt[i][j] == '0':
+                    loss = self.loss_weight[i][j] * self.loss[i][j](inputs,
+                                                                    torch.from_numpy(targets[i]).to(self.device))
                 else:
-                    temp = self.weight[i] * self.loss[i][j](inputs[i], targets[i], self.copt[i][j])
-                self.total_loss += temp
-                self.losses.append(temp.detach().cpu().item())
+                    loss = self.loss_weight[i][j] * self.loss[i][j](inputs,
+                                                                    torch.from_numpy(targets[i]).to(self.device),
+                                                                    torch.from_numpy(weights[i][j]).to(self.device))
+                self.total_loss += loss
+                self.losses.append(loss.detach().cpu().item())
         return self.total_loss, self.losses

@@ -1,9 +1,9 @@
 SYSTEM:
   NUM_GPUS: 1
 MODEL:
-  LOPT: [['Dice', 'CE'],['MSE'],['Dice','CE']]
-  WOPT: [[1,1],[1],[1,1]]
-  COPT: [[[ ]]]
+  LOPT: [['DiceLoss', 'WeightedBCE'],['MSE'],['DiceLoss','WeightedBCE']]
+  WOPT: ['']
+  LOSS_WEIGHT: [[1.0,1.0],[1.0],[1.0,1.0]]
   INPUTSHAPE: [256, 256]
   OUTPUTSHAPE: [128, 128]
 DATASET:

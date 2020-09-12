@@ -1,6 +1,7 @@
 from typing import List, Dict, Tuple
 import torch
 from torch.utils.data import Dataset, DataLoader
+import numpy as np
 from .HVDataset import HVDataset
 
 dataset_zoo = {'hv': HVDataset}
@@ -15,13 +16,16 @@ def build_dataloader(cfg, mode):
 
 
 def collate_fn_train(batch):
-    images, targets = zip(*batch)
-    images = torch.stack(images, dim=0)
-    targets = torch.stack(targets, dim=0)
-    return images, targets
+    images, targets, weights = zip(*batch)
+    images = np.stack(images, axis=0)
+    # multiple targets for each input
+    targets = [np.stack(targets[:][i], axis=0) for i in range(len(targets[0]))]
+    weights = [[np.stack(targets[:][i][j], axis=0) for j in range(len(targets[0][i]))] for i in
+               range(len(targets[0]))]
+    return images, targets, weights
 
 
 def collate_fn_test(batch):
     images, pos = zip(*batch)
-    images = torch.stack(images, dim=0)
+    images = np.stack(images, axis=0)
     return images, pos

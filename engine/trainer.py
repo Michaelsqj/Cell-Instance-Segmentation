@@ -17,8 +17,8 @@ class Trainer:
         self.device = device
         self.mode = mode
         self.cfg = cfg
-        self.criterion = Criterion(self.cfg.MODEL.lopt, self.cfg.MODEL.wopt, self.cfg.MODEL.copt)
-        self.model = build_model(self.cfg.MODEL.NAME)
+        self.criterion = Criterion(self.cfg.MODEL.LOPT, self.cfg.MODEL.WOPT, self.cfg.MODEL.LOSS_WEIGHT, device)
+        self.model = build_model(self.cfg.MODEL.NAME).to(self.device)
         self.dataloader = build_dataloader(self.cfg, self.mode)
         self.optimizer, self.lr_scheduler = build_solver(cfg, self.model)
         self.start_iter = 0
