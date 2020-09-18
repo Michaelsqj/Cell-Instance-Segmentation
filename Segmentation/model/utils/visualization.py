@@ -1,7 +1,7 @@
 import time
 from torch.utils.tensorboard import SummaryWriter
 from torchvision.utils import make_grid
-
+import numpy as np
 
 class visualizer():
     """
@@ -24,11 +24,20 @@ class visualizer():
 
     def image(self, images, outputs, masks):
         # images: Nx3xHxW, outputs: [NxCxHxW,...], masks: [NxCxHxW,...]
-        image = make_grid(images.squeeze(), padding=0, nrow=images.shape[0])
+        for j in range(len(outputs)):
+            for i in range(outputs[j].shape[1]):
+                if type(outputs[j])==np.ndarray:
+                    outputs[j]=torch.from_numpy(outputs[j])
+                output = make_grid(outputs[j][:,i:i+1,...], padding=0, nrow=outputs[j].shape[0])
+                self.writer.add_image('output%d_%d' % (j, i), output, global_step=self.iter)
+        for j in range(len(masks)):
+            for i in range(masks[j].shape[1]):
+                if type(mask[j])==np.ndarray:
+                    masks[j]=torch.from_numpy(masks[j])
+                mask = make_grid(masks[j][:,i:i+1,...], padding=0, nrow=masks[j].shape[0])
+                self.writer.add_image('mask%d_%d' % (j,i), mask, global_step=self.iter)
+        if type(images)==np.ndarray:
+            images=torch.from_numpy(images)
+        image = make_grid(images, padding=0, nrow=images.shape[0])
         self.writer.add_image('image', image, global_step=self.iter)
-        for i in range(outputs.shape[1]):
-            output = make_grid(outputs[i].squeeze(), padding=0, nrow=outputs.shape[0])
-            self.writer.add_image('output%d' % i, output, global_step=self.iter)
-        for i in range(outputs.shape[1]):
-            mask = make_grid(masks[i].squeeze(), padding=0, nrow=masks.shape[0])
-            self.writer.add_image('mask%d' % i, mask, global_step=self.iter)
+        # todo figure out why the last sentence take effect at the next iteration
