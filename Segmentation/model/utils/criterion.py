@@ -7,6 +7,7 @@ class Criterion(nn.Module):
     """
     compute loss given by loss option and loss weight
     most important : each input should correspond to each target
+    1 input -> 1 target -> >=1 loss
     """
 
     def __init__(self, lopt, wopt, loss_weigth, device):
@@ -46,8 +47,8 @@ class Criterion(nn.Module):
 
     def forward(self, inputs, targets, weights):
         """
-        :param inputs:  list of model output
-        :param targets:  list of target, same number as inputs
+        :param inputs:  [ ] * n
+        :param targets:  [ ] * n
         :return:
         """
         for i in range(len(self.loss)):

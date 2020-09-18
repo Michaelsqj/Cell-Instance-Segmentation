@@ -1,8 +1,6 @@
-from typing import List, Dict, Tuple
-import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 import numpy as np
-from HVDataset import HVDataset
+from .HVDataset import HVDataset
 
 dataset_zoo = {'hv': HVDataset}
 

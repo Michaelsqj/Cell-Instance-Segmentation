@@ -2,8 +2,6 @@ import torch.nn as nn
 from Segmentation.model.module import _Decoder, _Encoder, Scale_attention
 
 
-
-
 class HoverNet(nn.Module):
     def __init__(self):
         super(HoverNet, self).__init__()

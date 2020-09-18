@@ -5,4 +5,4 @@ model_zoo = {'hv': HoverNet}
 
 
 def build_model(name):
-    return model_zoo[name]
+    return model_zoo[name]()

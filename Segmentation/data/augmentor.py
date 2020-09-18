@@ -1,8 +1,5 @@
-import imgaug as ia
 import imgaug.augmenters as iaa
 from imgaug.augmentables.segmaps import SegmentationMapsOnImage
-import random
-import numpy as np
 import torch.nn as nn
 
 """ augmentation
@@ -52,6 +49,7 @@ class augmentor(nn.Module):
              iaa.GammaContrast()])
         # iaa.GammaContrast((0.5, 2.0), per_channel=True)
         return aug
+
 # def aug(image, mask):
 #     mask = mask.astype(np.uint8)
 #     mask = SegmentationMapsOnImage(mask, shape=mask.shape)
