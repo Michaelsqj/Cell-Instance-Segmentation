@@ -9,7 +9,6 @@ import logging
 
 logger = logging.getLogger('main.trainer')
 
-
 class Trainer:
     def __init__(self, cfg, mode, device, checkpoint):
         self.device = device

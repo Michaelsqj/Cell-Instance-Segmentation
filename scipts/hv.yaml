@@ -7,10 +7,9 @@ MODEL:
   INPUTSHAPE: [256, 256]
   OUTPUTSHAPE: [128, 128]
 DATASET:
-  INPUT_PATH: ''
-  OUTPUT_PATH: ''
-  IMAGE: '.json'
-  LABEL: '.json'
+  INPUT_PATH: '/home/shenqijia/data/MoNuSAC/'
+  OUTPUT_PATH: '/home/shenqijia/checkpoint/hv/'
+  IMAGE: 'train.json'
 SOLVER:
   LR_SCHEDULER: 'ReduceOnPlateau'
   BASE_LR: 1e-3
@@ -20,6 +19,6 @@ SOLVER:
   ITERATION_TOTAL: 600
   ITERATION_SAVE: 50
 INFERENCE:
-  IMAGE: '.json'
+  IMAGE: 'val.json'
   STRIDE: 64
-  OUTPUT_PATH: ''
+  OUTPUT_PATH: '/home/shenqijia/result/pred/'

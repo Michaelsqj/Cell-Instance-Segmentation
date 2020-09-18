@@ -24,8 +24,8 @@ class HVDataset(Dataset):
         """
         self.cfg = cfg
         dataset = cfg.DATASET.INPUTPATH + cfg.DATASET.IMAGE if mode == 'train' else cfg.DATASET.INPUTPATH + cfg.INFERENCE.IMAGE
-        self.images = json.load(dataset)['image']
-        self.labels = json.load(dataset)['label'] if mode == 'train' else None
+        self.images = json.load(open(dataset, 'r'))['image']
+        self.labels = json.load(open(dataset, 'r'))['label'] if mode == 'train' else None
         self.input_path = cfg.DATASET.INPUTPATH
         self.mode = mode
         self.input_shape = cfg.MODEL.INPUT_SHAPE
