@@ -26,8 +26,8 @@ def get_hv_target(target: np.array) -> np.ndarray:
         tmp_v = V - yc
         tmp_h = np.where(target == id, tmp_h, 0)
         tmp_v = np.where(target == id, tmp_v, 0)
-        #### rescale to -1~1
-        #### horizontal
+        # rescale to -1~1
+        # horizontal
         maximum = np.max(tmp_h)
         minimum = np.min(tmp_h)
         if maximum > 0 and minimum < 0:
@@ -46,7 +46,7 @@ def get_hv_target(target: np.array) -> np.ndarray:
             tmp_h = tmp_h_neg.astype(float)
         else:
             tmp_h = tmp_h.astype(float)
-        #### vertical
+        # vertical
         maximum = np.max(tmp_v)
         minimum = np.min(tmp_v)
         if maximum > 0 and minimum < 0:
@@ -100,42 +100,47 @@ def get_inst_centroid(inst_map):
     return inst_centroid_list, id_list
 
 
-def one_hot(label):
-    C = np.max(label)
-    target = np.zeros((C + 1, label.shape[0], label.shape[1]), dtype=label.dtype)
+def one_hot(label, C):
+    target = np.zeros((C, label.shape[0], label.shape[1]), dtype=label.dtype)
     for i in range(C):
-        target[C] = (label == C).astype(target.dtype)
+        target[i] = (label == i).astype(target.dtype)
+    target[C-1] += (label > (C-1)).astype(target.dtype)
     return target
 
 
 #################
 # get weight ####
 #################
-def weight_binary_ratio(label, alpha=1.0):
+def weight_binary_ratio(labels, alpha=1.0):
     """Binary-class rebalancing."""
-    # input: numpy tensor
-    # weight for smaller class is 1, the bigger one is at most 100*alpha
-    if label.max() == label.min():  # uniform weights for volume with a single label
-        weight_factor = 1.0
-        weight = np.ones_like(label, np.float32)
-    else:
-        weight_factor = float(label.sum()) / np.prod(label.shape)
-
-        weight_factor = np.clip(weight_factor, a_min=5e-2, a_max=0.99)
-
-        if weight_factor > 0.5:
-            weight = label + alpha * weight_factor / (1 - weight_factor) * (1 - label)
+    # labels CxHxW
+    weights = []
+    for c in range(labels.shape[0]):
+        label = labels[c]
+        if label.max() == label.min():  # uniform weights for volume with a single label
+            weight_factor = 1.0
+            weight = np.ones_like(label, np.float32)
         else:
-            weight = alpha * (1 - weight_factor) / weight_factor * label + (1 - label)
-    return weight
+            weight_factor = float(label.sum()) / np.prod(label.shape)
+
+            weight_factor = np.clip(weight_factor, a_min=5e-2, a_max=0.99)
+
+            if weight_factor > 0.5:
+                weight = label + alpha * weight_factor / (1 - weight_factor) * (1 - label)
+            else:
+                weight = alpha * (1 - weight_factor) / weight_factor * label + (1 - label)
+        weights.append(weight)
+    weights = np.stack(weights, axis=0)
+    return weights
 
 
 def weight_gdl(label):
     """
     weight for generalized dice loss https://arxiv.org/pdf/1707.03237.pdf
-    label should be C x ...
+    label should be C x H x W
+    return C x 1 x 1
     """
-    weight = np.zeros((label.shape[0], 1))
+    weight = np.zeros((label.shape[0], 1, 1))
     for i in range(label.shape[0]):
         w = np.sum(label[i])
         w = np.clip(w, a_min=1, a_max=10)

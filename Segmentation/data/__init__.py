@@ -9,7 +9,7 @@ def build_dataloader(cfg, mode):
     dataset = dataset_zoo[cfg.DATASET.NAME](cfg, mode)
     collate_fn = collate_fn_train if mode == 'train' else collate_fn_test
     shuffle = True if mode == 'train' else False
-    dataloader = DataLoader(dataset, batch_size=cfg.SOLVER.BATCHSIZE, shuffle=shuffle, collate_fn=collate_fn)
+    dataloader = DataLoader(dataset, batch_size=cfg.SOLVER.BATCH_SIZE, shuffle=shuffle, collate_fn=collate_fn)
     return dataloader
 
 

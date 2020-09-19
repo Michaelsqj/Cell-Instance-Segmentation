@@ -6,6 +6,7 @@ import json
 from Segmentation.utils import read_img
 from Segmentation.data.utils import *
 from Segmentation.data.augmentor import augmentor
+from Segmentation.data.data_segmentation import get_targets, get_weights
 
 
 class HVDataset(Dataset):
@@ -19,9 +20,11 @@ class HVDataset(Dataset):
         input_shape:   shape required to input to the net H*W
         """
         self.cfg = cfg
-        dataset = cfg.DATASET.INPUT_PATH + cfg.DATASET.IMAGE if mode == 'train' else cfg.DATASET.INPUT_PATH + cfg.INFERENCE.IMAGE
+        dataset = cfg.DATASET.INPUT_PATH + \
+            cfg.DATASET.IMAGE if mode == 'train' else cfg.DATASET.INPUT_PATH + cfg.INFERENCE.IMAGE
         self.images = json.load(open(dataset, 'r'))['image']
-        self.labels = json.load(open(dataset, 'r'))['label'] if mode == 'train' else None
+        self.labels = json.load(open(dataset, 'r'))[
+            'label'] if mode == 'train' else None
         self.input_path = cfg.DATASET.INPUT_PATH
         self.mode = mode
         self.input_shape = cfg.MODEL.INPUT_SHAPE
@@ -45,12 +48,15 @@ class HVDataset(Dataset):
             """
             read image -> pad image -> sample image -> aug 
             """
-            image = read_img(os.path.join(self.input_path, self.images[idx]))
+            # get rid of last channel alpha
+            image = read_img(os.path.join(self.input_path, self.images[idx]))[..., :3]
             mask = read_img(os.path.join(self.input_path, self.labels[idx]))
             pos = self.compute_pos(image.shape)
             image, mask = self.sample(pos, image, mask)
-            image, mask = self.augmentor({'image': image, 'label': mask})
-            return image, mask
+            data = self.augmentor({'image': image, 'label': mask})
+            targets = get_targets(data['label'], self.cfg.MODEL.TOPT, [0, 0, 1])
+            weights = get_weights(targets, self.cfg.MODEL.WOPT, data['label'][..., 0])
+            return image.transpose((2, 0, 1)), targets, weights
         if self.mode == 'test':
             """
             read image -> compute pos
@@ -58,7 +64,7 @@ class HVDataset(Dataset):
             pos = self.pos[idx]
             image = read_img(os.path.join(self.input_path, self.images[pos[0]]))
             image = self.sample(pos[1:], image)
-            return image, pos
+            return image.transpose((2, 0, 1)), pos
 
     def __len__(self):
         if self.mode == 'train':
@@ -66,17 +72,21 @@ class HVDataset(Dataset):
         if self.mode == 'test':
             return len(self.pos)
 
-    def pad(self, image, pad):
+    def pad(self, image, pad, label=False):
         a = pad[0]
         b = pad[1]
         temp = []
-        for i in range(image.shape[2]):
-            image0 = np.squeeze(image[..., i])
-            v = int(np.mean(image[:, 0, i]))
-            image0 = np.pad(image0, ((a[0], b[0]), (a[1], b[1])), constant_values=(v, v), mode='constant')
-            temp.append(np.expand_dims(image0, axis=2))
-        image = np.concatenate(temp, axis=2)
-        return image
+        if label:
+            image = np.pad(image, ((a[0], a[1]), (b[0], b[1]), (0, 0)), constant_values=(0, 0), mode='constant')
+            return image
+        else:
+            for i in range(image.shape[2]):
+                image0 = np.squeeze(image[..., i])
+                v = int(np.mean(image[:, 0, i]))
+                image0 = np.pad(image0, ((a[0], a[1]), (b[0], b[1])), constant_values=(v, v), mode='constant')
+                temp.append(np.expand_dims(image0, axis=2))
+            image = np.concatenate(temp, axis=2)
+            return image
 
     def compute_pos(self, image_shape, idx=None):
         if self.mode == 'test':
@@ -86,7 +96,8 @@ class HVDataset(Dataset):
                 if image_shape[i] < self.output_shape[i]:
                     N = 0
                 else:
-                    N = math.ceil((image_shape[i] - self.output_shape[i]) / float(self.stride))
+                    N = math.ceil(
+                        (image_shape[i] - self.output_shape[i]) / float(self.stride))
                 for j in range(N):
                     pos[i].append(j * self.stride)
             if idx is None:
@@ -123,11 +134,11 @@ class HVDataset(Dataset):
             # image < output shape
             if mask is not None:
                 pad_mask[i][1] = max(0, pos[i] + self.output_shape[i] - image.shape[i])
-        image = image[pos[0][0]:pos[0][1], pos[1][0]:pos[1][1], :]
+        image = image[pos1[0][0]:pos1[0][1], pos1[1][0]:pos1[1][1], :]
         image = self.pad(image, pad_image)
         if mask is not None:
-            mask = mask[pos[0][0]:pos[0][1], pos[1][0]:pos[1][1], :]
-            mask = self.pad(mask, pad_mask)
+            mask = mask[pos[0]:min(image.shape[0], pos[0]+self.output_shape[0]), pos[1]:min(image.shape[1], pos[1]+self.output_shape[1]), :]
+            mask = self.pad(mask, pad_mask, label=True)
             return image, mask
         else:
             return image
